@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optionnel : couleur de fond gris clair pour toute l'app */
+body {
+  @apply bg-slate-50 text-slate-900;
+}
