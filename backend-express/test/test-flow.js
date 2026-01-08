@@ -5,7 +5,7 @@ async function testFullFlow() {
   
     console.log(`--- 1. TENTATIVE D'INSCRIPTION (${uniqueEmail}) ---`);
     
-    const regResponse = await fetch('http://127.0.0.1:3000/api/auth/register', {
+    const regResponse = await fetch('http://localhost:3000/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: uniqueEmail, password: password, role: "PRO" })
@@ -21,7 +21,7 @@ async function testFullFlow() {
   
     console.log("\n--- 2. TENTATIVE DE CONNEXION ---");
   
-    const loginResponse = await fetch('http://127.0.0.1:3000/api/auth/login', {
+    const loginResponse = await fetch('http://localhost:3000/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: uniqueEmail, password: password })

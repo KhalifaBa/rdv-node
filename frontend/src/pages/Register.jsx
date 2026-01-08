@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import axios from "../api/axios";
 import toast from "react-hot-toast";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -16,7 +16,7 @@ export default function Register() {
     e.preventDefault();
     try {
 
-      await axios.post("http://127.0.0.1:3000/api/auth/register", formData);
+      await axios.post("/auth/register", formData);
       toast.success("Compte créé avec succès ! Connectez-vous.");
       navigate("/login"); 
     } catch (error) {
