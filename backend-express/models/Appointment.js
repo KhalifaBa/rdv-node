@@ -3,18 +3,18 @@ const sequelize = require('../config/database');
 
 const Appointment = sequelize.define('Appointment', {
   date: {
-    type: DataTypes.DATE, // Sequelize gère les dates JS standard
+    type: DataTypes.DATE, 
     allowNull: false
   },
   status: {
     type: DataTypes.STRING,
-    defaultValue: 'CONFIRMED' // Pour l'instant, on confirme direct
+    defaultValue: 'CONFIRMED' 
   },
-  clientId: { // L'utilisateur qui réserve
+  clientId: { 
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  serviceId: { // Le service réservé
+  serviceId: { 
     type: DataTypes.INTEGER,
     allowNull: false
   }

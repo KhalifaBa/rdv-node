@@ -8,7 +8,7 @@ export default function ClientAppointments() {
   const { token } = useContext(AuthContext);
   const [appointments, setAppointments] = useState([]);
 
-  // Charger les RDV au démarrage de la page
+
   useEffect(() => {
     fetchAppointments();
   }, []);
@@ -32,7 +32,7 @@ export default function ClientAppointments() {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Rendez-vous annulé 🗑️");
-      // On recharge la liste pour faire disparaître le RDV supprimé
+     
       fetchAppointments(); 
     } catch (error) {
       toast.error("Erreur lors de l'annulation");

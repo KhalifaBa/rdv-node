@@ -7,14 +7,14 @@ const Service = sequelize.define('Service', {
     allowNull: false
   },
   duration: {
-    type: DataTypes.INTEGER, // En minutes (ex: 30)
+    type: DataTypes.INTEGER, 
     allowNull: false
   },
   price: {
     type: DataTypes.FLOAT,
     allowNull: false
   },
-  userId: { // La Clé Étrangère (Lien vers le User qui a créé le service)
+  userId: { 
     type: DataTypes.INTEGER,
     allowNull: false
   }

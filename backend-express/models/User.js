@@ -12,7 +12,7 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true,
     validate: {
-      isEmail: true // Validation gratuite offerte par Sequelize
+      isEmail: true 
     }
   },
   password: {

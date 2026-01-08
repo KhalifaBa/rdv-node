@@ -1,19 +1,19 @@
 const Appointment = require('../models/Appointment');
 const Service = require('../models/Service');
 
-// 1. Réserver un créneau
+
 exports.bookAppointment = async (req, res) => {
   try {
     const clientId = req.user.userId;
     const { serviceId, date } = req.body;
 
-    // Vérif si le service existe
+
     const service = await Service.findByPk(serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service introuvable' });
     }
 
-    // Vérif doublon (Même service, même heure)
+
     const existing = await Appointment.findOne({
       where: { serviceId, date }
     });
@@ -36,13 +36,13 @@ exports.bookAppointment = async (req, res) => {
   }
 };
 
-// 2. Voir MES rendez-vous (NOUVEAU)
+
 exports.getMyAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.findAll({
-      where: { clientId: req.user.userId }, // Filtre par l'ID du token
-      include: [Service], // Jointure pour avoir le nom du service et le prix
-      order: [['date', 'ASC']] // Tri par date croissante
+      where: { clientId: req.user.userId }, 
+      include: [Service], 
+      order: [['date', 'ASC']] 
     });
     res.json(appointments);
   } catch (error) {
@@ -51,12 +51,12 @@ exports.getMyAppointments = async (req, res) => {
   }
 };
 
-// 3. Annuler un rendez-vous (NOUVEAU)
+
 exports.cancelAppointment = async (req, res) => {
   try {
     const appointmentId = req.params.id;
 
-    // Suppression sécurisée : On vérifie que le RDV appartient bien au client connecté
+
     const deleted = await Appointment.destroy({
       where: { 
         id: appointmentId,

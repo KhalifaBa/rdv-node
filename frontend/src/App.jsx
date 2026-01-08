@@ -4,7 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProDashboard from "./pages/ProDashboard";
 import ClientBooking from "./pages/ClientBooking";
-import ClientAppointments from "./pages/ClientAppointments"; // <--- 1. Import
+import ClientAppointments from "./pages/ClientAppointments";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { useContext } from "react";
 

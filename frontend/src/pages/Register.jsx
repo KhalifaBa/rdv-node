@@ -7,7 +7,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    role: "CLIENT" // Par défaut
+    role: "CLIENT" 
   });
   
   const navigate = useNavigate();
@@ -15,10 +15,10 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // On envoie les données au Backend
+
       await axios.post("http://127.0.0.1:3000/api/auth/register", formData);
       toast.success("Compte créé avec succès ! Connectez-vous.");
-      navigate("/login"); // Redirection vers le login
+      navigate("/login"); 
     } catch (error) {
         toast.error("Erreur : " + (error.response?.data?.message || "Impossible de s'inscrire"));
     }

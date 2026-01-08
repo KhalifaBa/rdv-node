@@ -8,15 +8,15 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const navigate = useNavigate();
 
-  // Fonction pour se connecter
+
   const login = (token, userData) => {
     localStorage.setItem("token", token);
     setToken(token);
     setUser(userData);
-    navigate("/dashboard"); // Redirection après login
+    navigate("/dashboard"); 
   };
 
-  // Fonction pour se déconnecter
+ 
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);

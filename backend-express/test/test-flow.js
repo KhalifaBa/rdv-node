@@ -1,4 +1,3 @@
-// test-flow.js
 async function testFullFlow() {
     // On génère un email unique basé sur l'heure actuelle pour éviter l'erreur "Déjà utilisé"
     const uniqueEmail = `user_${Date.now()}@test.com`;
@@ -13,7 +12,7 @@ async function testFullFlow() {
     });
     
     const regData = await regResponse.json();
-    console.log("Statut Inscription:", regResponse.status); // Doit être 201
+    console.log("Statut Inscription:", regResponse.status);
   
     if (regResponse.status !== 201) {
       console.log("❌ Arrêt du test (Inscription échouée)", regData);
