@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import api from "../api/axios"; // Assure-toi que c'est bien ton fichier configuré avec l'intercepteur
+import api from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -21,19 +21,19 @@ export default function ProDashboard() {
 
   const fetchServices = async () => {
     try {
-      const res = await api.get("/services/me"); // Vérifie que cette route existe bien dans ton backend
+      const res = await api.get("/services/me");
       setServices(res.data);
     } catch (error) { console.error(error); }
   };
 
   const fetchProAppointments = async () => {
     try {
-      const res = await api.get("/appointments/pro"); // Route OK
+      const res = await api.get("/appointments/pro");
       setAppointments(res.data);
     } catch (error) { console.log("Pas de RDV"); }
   };
 
-  // --- CORRECTION 1 : Calcul CA (Exclure les annulés) ---
+  // CALCUL CA (Uniquement les RDV valides)
   const validAppointments = appointments.filter(rdv => !rdv.status?.includes('cancelled'));
   const totalRevenue = validAppointments.reduce((total, rdv) => total + (rdv.price || 0), 0);
 
@@ -43,7 +43,6 @@ export default function ProDashboard() {
       return toast.error("L'ouverture doit être avant la fermeture !");
     }
     try {
-      // Vérifie que tu as une route backend pour mettre à jour le profil user
       await api.put("/auth/profile", schedule); 
       toast.success("Horaires mis à jour ! 🕒");
     } catch (error) { toast.error("Erreur sauvegarde"); }
@@ -60,21 +59,19 @@ export default function ProDashboard() {
   };
 
   const handleDeleteService = async (id) => {
-    if(!window.confirm("Supprimer ce service ?")) return;
+    // Suppression directe sans alerte
     try {
       await api.delete(`/services/${id}`);
-      toast.success("Service supprimé");
+      toast.success("Service supprimé 🗑️");
       fetchServices();
-    } catch (error) { toast.error("Impossible de supprimer"); }
+    } catch (error) { toast.error("Impossible de supprimer (utilisé dans un RDV ?)"); }
   };
 
-  // --- CORRECTION 2 : Route d'annulation correcte (POST et non DELETE) ---
   const handleCancelRDV = async (id) => {
-    if(!window.confirm("Annuler ce RDV et rembourser le client ?")) return;
+    // Annulation directe sans alerte
     try {
-      // On utilise la route POST /cancel-pro/:id définie dans le backend
       const res = await api.post(`/appointments/cancel-pro/${id}`);
-      toast.success(res.data.message); // Affiche "RDV annulé et remboursé..."
+      toast.success(res.data.message); // Ex: "RDV annulé et remboursé"
       fetchProAppointments();
     } catch (error) { 
       toast.error(error.response?.data?.message || "Erreur annulation"); 
@@ -193,7 +190,6 @@ export default function ProDashboard() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {appointments.map((rdv) => {
-                    // --- CORRECTION 3 : Gestion visuelle du statut Annulé ---
                     const isCancelled = rdv.status && rdv.status.includes('cancelled');
                     
                     return (
@@ -217,11 +213,11 @@ export default function ProDashboard() {
                         <div className="text-xs text-green-600 font-bold">+ {rdv.price} €</div>
                       </td>
                       <td className="p-4 text-right flex flex-col items-end gap-2">
-                        {/* Statut PAIEMENT */}
+                        {/* Status Badges */}
                         {rdv.isPaid && !isCancelled && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">PAYÉ ✅</span>}
                         {rdv.isPaid && isCancelled && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">REMBOURSÉ ↩️</span>}
                         
-                        {/* Bouton ANNULER (Seulement si pas déjà annulé) */}
+                        {/* Bouton Annuler (Uniquement si pas déjà annulé) */}
                         {!isCancelled ? (
                           <button onClick={() => handleCancelRDV(rdv.id)} className="text-red-400 hover:text-red-600 text-xs font-medium border border-transparent hover:border-red-100 px-2 py-1 rounded transition">
                             Annuler
