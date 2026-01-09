@@ -8,7 +8,7 @@ export default function ClientAppointments() {
   const { user } = useContext(AuthContext);
   const [appointments, setAppointments] = useState([]);
 
-  // --- NOUVEAUX ÉTATS POUR LA MODALE ---
+  // --- ÉTATS POUR LA MODALE ---
   const [showModal, setShowModal] = useState(false);
   const [selectedRdvId, setSelectedRdvId] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -24,35 +24,47 @@ export default function ClientAppointments() {
     }
   };
 
-  // 1. Fonction qui OUVRE la modale (au clic sur le bouton "Annuler" de la liste)
+  // 1. Ouvre la modale
   const handleOpenModal = (id) => {
     setSelectedRdvId(id);
     setShowModal(true);
   };
 
-  // 2. Fonction qui CONFIRME l'annulation (au clic sur "Oui" dans la modale)
+  // 2. Confirme l'annulation
   const handleConfirmCancel = async () => {
     if (!selectedRdvId) return;
-    setIsCancelling(true); // Active le chargement sur le bouton
+    setIsCancelling(true);
 
     try {
+      // 1. Appel API
       const res = await api.post(`/appointments/cancel-client/${selectedRdvId}`);
       
-      // Succès
+      // 2. Succès : On met à jour l'affichage IMMÉDIATEMENT sans attendre le fetch
+      // On cherche le RDV dans la liste et on change son statut pour qu'il apparaisse barré tout de suite
+      setAppointments(prevAppointments => 
+        prevAppointments.map(rdv => 
+          rdv.id === selectedRdvId 
+            ? { ...rdv, status: 'cancelled_by_client' } // On force le statut annulé
+            : rdv
+        )
+      );
+
       toast.success(res.data.message); 
-      fetchAppointments(); // Rafraîchir la liste
-      setShowModal(false); // Fermer la modale
+      setShowModal(false);
+
+      // 3. On recharge quand même la liste propre depuis le serveur en arrière-plan
+      fetchAppointments();
+
     } catch (error) { 
       toast.error(error.response?.data?.message || "Erreur lors de l'annulation"); 
     } finally {
-      setIsCancelling(false); // Désactive le chargement
+      setIsCancelling(false);
     }
   };
 
   // Helper pour l'affichage des badges
   const getStatusBadge = (status, isPaid) => {
-      if (status?.includes('cancelled_refunded')) return <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded font-bold uppercase">Annulé (Remboursé)</span>;
-      if (status?.includes('cancelled')) return <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-bold uppercase">Annulé (Non remboursé)</span>;
+      if (status?.includes('cancelled')) return <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-bold uppercase">Annulé</span>;
       if (isPaid) return <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold uppercase">Confirmé & Payé</span>;
       return <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded font-bold uppercase">Réservé</span>;
   };
@@ -73,6 +85,7 @@ export default function ClientAppointments() {
         ) : (
           <div className="grid gap-4">
             {appointments.map((rdv) => {
+                // Vérifie si le statut contient 'cancelled' pour appliquer le style barré
                 const isCancelled = rdv.status && rdv.status.includes('cancelled');
 
                 return (
@@ -82,7 +95,7 @@ export default function ClientAppointments() {
                           {rdv.Service ? rdv.Service.name : "Service supprimé"}
                       </h3>
                       <div className="text-slate-500 mt-1 flex gap-2 items-center">
-                        <span>🗓️ {new Date(rdv.date).toLocaleDateString()}</span>
+                        <span className={isCancelled ? 'line-through' : ''}>🗓️ {new Date(rdv.date).toLocaleDateString()}</span>
                         <span>⏰ {new Date(rdv.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                       </div>
                       
@@ -92,11 +105,12 @@ export default function ClientAppointments() {
                     </div>
 
                     <div className="text-right flex items-center gap-6">
-                      <div className="font-bold text-xl text-slate-700">{rdv.Service ? rdv.Service.price : 0} €</div>
+                      <div className={`font-bold text-xl ${isCancelled ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                        {rdv.Service ? rdv.Service.price : 0} €
+                      </div>
                       
                       {!isCancelled && (
                           <button 
-                            // CHANGEMENT ICI : On appelle handleOpenModal au lieu de l'API direct
                             onClick={() => handleOpenModal(rdv.id)} 
                             className="text-red-500 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 px-4 py-2 rounded-lg transition duration-200 text-sm font-medium"
                           >
@@ -111,7 +125,7 @@ export default function ClientAppointments() {
         )}
       </div>
 
-      {/* --- MODALE DE CONFIRMATION (Style Tailwind) --- */}
+      {/* --- MODALE DE CONFIRMATION --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full animate-in fade-in zoom-in duration-200">

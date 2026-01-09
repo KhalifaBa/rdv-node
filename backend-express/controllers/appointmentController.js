@@ -42,13 +42,21 @@ exports.getMyAppointments = async (req, res) => {
       include: [
         { 
           model: Service, 
-          attributes: ['name', 'price', 'duration'] 
+          attributes: ['name', 'price', 'duration'],
+          // AJOUT ICI : On inclut le Pro (User) qui possède le service pour avoir son délai
+          include: [
+            {
+              model: User,
+              attributes: ['cancellationDelay'] // On ne récupère que le délai
+            }
+          ]
         }
       ],
       order: [['date', 'ASC']]
     });
     res.json(appointments);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Erreur récupération des RDV' });
   }
 };
