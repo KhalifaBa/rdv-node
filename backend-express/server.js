@@ -33,7 +33,7 @@ app.use(cors({
 
 // 2. Parser le JSON
 app.use(express.json());
-
+app.set('trust proxy', 1);
 // 3. Parser les Cookies (INDISPENSABLE AVANT LES ROUTES)
 app.use(cookieParser()); 
 

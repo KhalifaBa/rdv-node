@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 // On définit la clé ici pour être sûr qu'elle est identique partout
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_TEMPORAIRE';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 exports.register = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -43,8 +45,8 @@ exports.login = async (req, res) => {
     // Envoi du Cookie
     res.cookie('token', token, {
       httpOnly: true, // Empêche le JS côté client de lire le cookie (Sécurité)
-      secure: false,  // FALSE pour localhost (http), TRUE en production (https)
-      sameSite: 'lax', // Nécessaire pour que le cookie passe sur localhost
+      secure: isProduction,  // FALSE pour localhost (http), TRUE en production (https)
+      sameSite: isProduction ? 'none' : 'lax', // Nécessaire pour que le cookie passe sur localhost
       maxAge: 24 * 60 * 60 * 1000 // 24 heures
     });
 
