@@ -10,12 +10,21 @@ const Appointment = require('./models/Appointment');
 
 const app = express();
 
-// --- BLOC CONFIGURATION (L'ORDRE COMPTE) ---
+// Remplace la config CORS actuelle par :
+const allowedOrigins = [
+  'http://localhost:5173', // Pour tes tests locaux
+  'https://rdv-node.vercel.app/' // 👈 L'URL que Vercel vient de te donner
+];
 
-// 1. CORS : Autoriser le Frontend
 app.use(cors({
-  origin: 'http://localhost:5173', // Pas de slash à la fin !
-  credentials: true // Autoriser les cookies
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
 }));
 
 // 2. Parser le JSON
