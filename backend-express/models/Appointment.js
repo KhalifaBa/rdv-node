@@ -2,22 +2,25 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const Appointment = sequelize.define('Appointment', {
-  date: {
-    type: DataTypes.DATE, 
-    allowNull: false
-  },
-  status: {
-    type: DataTypes.STRING,
-    defaultValue: 'CONFIRMED' 
-  },
-  clientId: { 
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  serviceId: { 
-    type: DataTypes.INTEGER,
-    allowNull: false
-  }
+    date: {
+        type: DataTypes.DATE,
+        allowNull: false
+    },
+    // --- AJOUTS ---
+    isPaid: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    price: { // On stocke le prix payé pour les stats du Pro
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0
+    },
+    stripePaymentId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    }
+    // --------------
 });
 
 module.exports = Appointment;

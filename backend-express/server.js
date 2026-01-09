@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // <--- 1. IMPORT
 const sequelize = require('./config/database');
-
+require('dotenv').config();
 // Import des modèles
 const User = require('./models/User');
 const Service = require('./models/Service');
@@ -40,7 +40,7 @@ Service.belongsTo(User, { foreignKey: 'userId' });
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/services', require('./routes/serviceRoutes'));
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
-
+app.use('/api/payment', require('./routes/paymentRoutes'));
 
 // Démarrage
 sequelize.sync({ alter: true })

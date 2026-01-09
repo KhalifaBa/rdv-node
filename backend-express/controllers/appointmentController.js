@@ -5,10 +5,9 @@ const User = require('../models/User');
 // 1. Réserver (Client)
 exports.bookAppointment = async (req, res) => {
   try {
+    const { serviceId, date, isPaid, stripePaymentId } = req.body; 
     const clientId = req.user.userId;
-    const { serviceId, date } = req.body;
-    
-    // Vérif existence service
+
     const service = await Service.findByPk(serviceId);
     if (!service) return res.status(404).json({ message: 'Service introuvable' });
 
@@ -16,7 +15,14 @@ exports.bookAppointment = async (req, res) => {
     const existing = await Appointment.findOne({ where: { serviceId, date } });
     if (existing) return res.status(409).json({ message: 'Créneau déjà réservé !' });
 
-    const newAppointment = await Appointment.create({ date, clientId, serviceId });
+    const newAppointment = await Appointment.create({
+      date,
+      clientId,
+      serviceId,
+      isPaid: isPaid || false, // <--- Nouveau
+      stripePaymentId: stripePaymentId || null, // <--- Nouveau
+      price: service.price // <--- On fige le prix
+    });
     res.status(201).json({ message: 'Confirmé', appointment: newAppointment });
   } catch (error) {
     res.status(500).json({ message: 'Erreur réservation' });

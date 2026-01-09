@@ -7,29 +7,109 @@ body {
   @apply bg-slate-50 text-slate-900;
 }
 
-/* Customisation du DatePicker */
-.react-datepicker-wrapper {
-  width: 100%;
-}
-
 .react-datepicker {
-  font-family: inherit !important;
-  border-radius: 0.75rem !important;
+  font-family: 'Inter', sans-serif;
   border: none !important;
+  border-radius: 16px !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden;
+  background-color: white;
 }
 
+/* L'en-tête (Mois / Année) */
 .react-datepicker__header {
-  background-color: #f8fafc !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  border-top-left-radius: 0.75rem !important;
-  border-top-right-radius: 0.75rem !important;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important; /* Indigo-500 to Indigo-600 */
+  border-bottom: none !important;
+  padding-top: 16px !important;
+  padding-bottom: 8px !important;
 }
 
-.react-datepicker__day--selected, .react-datepicker__time-list-item--selected {
-  background-color: #4f46e5 !important; /* Indigo-600 */
+/* Le titre du mois */
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  color: white !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  text-transform: capitalize;
+  margin-bottom: 8px;
 }
+
+/* Les jours de la semaine (Lun, Mar...) */
+.react-datepicker__day-name {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 600 !important;
+  width: 2.5rem !important;
+}
+
+/* Les jours du mois */
+.react-datepicker__day {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  line-height: 2.5rem !important;
+  border-radius: 50% !important; /* Rond */
+  font-weight: 500;
+  color: #334155; /* Slate-700 */
+  margin: 0.1rem !important;
+  transition: all 0.2s ease;
+}
+
+/* Hover sur un jour */
+.react-datepicker__day:hover {
+  background-color: #e0e7ff !important; /* Indigo-100 */
+  color: #4338ca !important; /* Indigo-700 */
+}
+
+/* Le jour SÉLECTIONNÉ */
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: #4f46e5 !important; /* Indigo-600 */
+  color: white !important;
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
+  font-weight: bold;
+}
+
+/* Le jour d'aujourd'hui */
+.react-datepicker__day--today {
+  color: #4f46e5 !important;
+  background-color: transparent;
+  border: 2px solid #e0e7ff;
+  font-weight: bold;
+}
+
+/* --- PARTIE HEURE (Colonne de droite) --- */
 
 .react-datepicker__time-container {
-  border-left: 1px solid #e2e8f0 !important;
+  border-left: 1px solid #f1f5f9 !important;
+  width: 100px !important;
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+  width: 100% !important;
+  border-radius: 0 0 16px 0;
+}
+
+.react-datepicker__time-list-item {
+  height: auto !important;
+  padding: 8px 0 !important;
+  font-size: 0.85rem;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+/* Heure sélectionnée */
+.react-datepicker__time-list-item--selected {
+  background-color: #4f46e5 !important; /* Indigo-600 */
+  color: white !important;
+  font-weight: bold;
+}
+
+.react-datepicker__time-list-item:hover {
+  background-color: #e0e7ff !important;
+  color: #4338ca !important;
+}
+
+/* La petite flèche (triangle) au dessus du calendrier */
+.react-datepicker__triangle {
+  display: none !important; /* C'est souvent plus propre sans */
 }
