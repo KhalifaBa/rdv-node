@@ -1,27 +1,23 @@
 const express = require('express');
 const cors = require('cors');
-const cookieParser = require('cookie-parser'); // <--- 1. IMPORT
-const sequelize = require('./config/database');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
-// Import des modèles
-const User = require('./models/User');
-const Service = require('./models/Service');
-const Appointment = require('./models/Appointment');
+
+// MODIFICATION ICI : On importe sequelize depuis le dossier models (qui contient maintenant les relations)
+const { sequelize } = require('./models'); 
 
 const app = express();
 
-// Remplace la config CORS actuelle par :
+// --- CONFIGURATION CORS ---
 const allowedOrigins = [
-  'http://localhost:5173', // Pour tes tests locaux
-  'https://rdv-node.vercel.app' // 👈 L'URL que Vercel vient de te donner
+  'http://localhost:5173', 
+  'https://rdv-node.vercel.app'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log("🔍 Origin reçue :", origin); 
-
+    // console.log("🔍 Origin reçue :", origin); // Décommentez pour débugger si besoin
     if (!origin) return callback(null, true);
-    
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'Not allowed by CORS';
       return callback(new Error(msg), false);
@@ -31,34 +27,25 @@ app.use(cors({
   credentials: true
 }));
 
-// 2. Parser le JSON
+// --- MIDDLEWARES ---
 app.use(express.json());
 app.set('trust proxy', 1);
-// 3. Parser les Cookies (INDISPENSABLE AVANT LES ROUTES)
-app.use(cookieParser()); 
+app.use(cookieParser());
 
-// --- FIN BLOC CONFIGURATION ---
-const PORT = process.env.PORT || 3000;
-
-// Relations BDD
-Service.hasMany(Appointment, { foreignKey: 'serviceId' });
-Appointment.belongsTo(Service, { foreignKey: 'serviceId' });
-User.hasMany(Appointment, { foreignKey: 'clientId' });
-Appointment.belongsTo(User, { foreignKey: 'clientId' });
-User.hasMany(Service, { foreignKey: 'userId' });
-Service.belongsTo(User, { foreignKey: 'userId' });
-
-
-// Routes
+// --- ROUTES ---
+// Plus besoin d'importer les modèles ici, les routes s'en chargent
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/services', require('./routes/serviceRoutes'));
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
 app.use('/api/payment', require('./routes/paymentRoutes'));
 
-// Démarrage
+// --- DÉMARRAGE ---
+const PORT = process.env.PORT || 3000;
+
+// On utilise le sequelize importé de ./models, qui contient déjà toutes les relations chargées
 sequelize.sync({ alter: true })
     .then(() => {
-        console.log('Base de données synchronisée');
-        app.listen(PORT, () => console.log('Serveur lancé sur http://localhost:3000'));
+        console.log('✅ Base de données synchronisée et relations établies');
+        app.listen(PORT, () => console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`));
     })
-    .catch(err => console.log('Erreur BDD:', err));
+    .catch(err => console.log('❌ Erreur BDD:', err));

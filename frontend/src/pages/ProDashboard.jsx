@@ -10,9 +10,12 @@ export default function ProDashboard() {
   const [services, setServices] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [formData, setFormData] = useState({ name: "", duration: 30, price: 0 });
+  
+  // 1. MODIFICATION ICI : Ajout du cancellationDelay dans l'état initial
   const [schedule, setSchedule] = useState({ 
     openingHour: user?.openingHour || 9, 
-    closingHour: user?.closingHour || 19 
+    closingHour: user?.closingHour || 19,
+    cancellationDelay: user?.cancellationDelay || 24 // <--- NOUVEAU
   });
 
   // --- NOUVEAUX ÉTATS (POUR LA MODALE) ---
@@ -49,8 +52,9 @@ export default function ProDashboard() {
       return toast.error("L'ouverture doit être avant la fermeture !");
     }
     try {
+      // Envoie tout l'objet schedule (y compris cancellationDelay) au backend
       await api.put("/auth/profile", schedule); 
-      toast.success("Horaires mis à jour ! 🕒");
+      toast.success("Configuration mise à jour ! ⚙️");
     } catch (error) { toast.error("Erreur sauvegarde"); }
   };
 
@@ -72,15 +76,12 @@ export default function ProDashboard() {
     } catch (error) { toast.error("Impossible de supprimer (utilisé dans un RDV ?)"); }
   };
 
-  // --- NOUVELLE LOGIQUE D'ANNULATION ---
-
-  // 1. Ouvre la modale
+  // --- LOGIQUE D'ANNULATION ---
   const handleOpenCancelModal = (id) => {
     setSelectedRdvId(id);
     setShowModal(true);
   };
 
-  // 2. Confirme l'annulation (Appel API)
   const handleConfirmCancel = async () => {
     if (!selectedRdvId) return;
     setIsCancelling(true);
@@ -124,10 +125,12 @@ export default function ProDashboard() {
             <p className="text-xs opacity-60 mt-2">{validAppointments.length} rendez-vous confirmés</p>
           </div>
 
-          {/* Réglage Horaires */}
+          {/* Réglage Horaires & Règles */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">⏰ Horaires d'ouverture</h2>
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">⏰ Configuration</h2>
             <form onSubmit={handleUpdateSchedule} className="space-y-4">
+              
+              {/* Horaires */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase">Ouverture</label>
@@ -142,7 +145,31 @@ export default function ProDashboard() {
                   </select>
                 </div>
               </div>
-              <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-bold text-sm transition">Sauvegarder les horaires</button>
+
+              {/* 2. MODIFICATION ICI : Ajout du champ Délai d'annulation */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                    ⏳ Délai d'annulation (Heures)
+                </label>
+                <div className="flex items-center gap-3 mt-2">
+                    <input 
+                        type="number" 
+                        min="0"
+                        max="168"
+                        value={schedule.cancellationDelay} 
+                        onChange={(e) => setSchedule({...schedule, cancellationDelay: Number(e.target.value)})} 
+                        className="w-20 p-2 border rounded-lg bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 text-center font-bold text-indigo-600"
+                    />
+                    <span className="text-sm text-slate-500">heures avant le RDV</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                   Si le client annule moins de {schedule.cancellationDelay}h avant, il ne sera pas remboursé.
+                </p>
+              </div>
+
+              <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-bold text-sm transition">
+                Sauvegarder la configuration
+              </button>
             </form>
           </div>
 
@@ -236,7 +263,7 @@ export default function ProDashboard() {
                         {rdv.isPaid && !isCancelled && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">PAYÉ ✅</span>}
                         {rdv.isPaid && isCancelled && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">REMBOURSÉ ↩️</span>}
                         
-                        {/* Bouton Annuler (MODIFIÉ POUR OUVRIR LA MODALE) */}
+                        {/* Bouton Annuler */}
                         {!isCancelled ? (
                           <button 
                             onClick={() => handleOpenCancelModal(rdv.id)} 
@@ -257,7 +284,7 @@ export default function ProDashboard() {
         </div>
       </div>
 
-      {/* --- MODALE DE CONFIRMATION (CODE AJOUTÉ) --- */}
+      {/* --- MODALE DE CONFIRMATION --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full animate-in fade-in zoom-in duration-200">
