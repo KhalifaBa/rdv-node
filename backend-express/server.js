@@ -13,7 +13,7 @@ const app = express();
 // Remplace la config CORS actuelle par :
 const allowedOrigins = [
   'http://localhost:5173', // Pour tes tests locaux
-  'https://rdv-node.vercel.app/' // 👈 L'URL que Vercel vient de te donner
+  'https://rdv-node.vercel.app' // 👈 L'URL que Vercel vient de te donner
 ];
 
 app.use(cors({
