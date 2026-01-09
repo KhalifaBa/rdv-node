@@ -23,6 +23,12 @@ const User = sequelize.define('User', {
     closingHour: {
         type: DataTypes.INTEGER,
         defaultValue: 19 // Par défaut 19h00
+    },
+    // Ajoute cette colonne pour stocker la règle du pro (en heures)
+    cancellationDelay: {
+        type: DataTypes.INTEGER,
+        defaultValue: 24, // Par défaut 24h
+        allowNull: false
     }
     // -----------------------
 });

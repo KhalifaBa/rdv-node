@@ -19,7 +19,12 @@ const Appointment = sequelize.define('Appointment', {
     stripePaymentId: {
         type: DataTypes.STRING,
         allowNull: true
-    }
+    },
+    stripePaymentIntentId: {
+        type: DataTypes.STRING,
+        allowNull: true
+      }
+
     // --------------
 });
 

@@ -38,7 +38,7 @@ app.set('trust proxy', 1);
 app.use(cookieParser()); 
 
 // --- FIN BLOC CONFIGURATION ---
-
+const PORT = process.env.PORT || 3000;
 
 // Relations BDD
 Service.hasMany(Appointment, { foreignKey: 'serviceId' });
@@ -59,6 +59,6 @@ app.use('/api/payment', require('./routes/paymentRoutes'));
 sequelize.sync({ alter: true })
     .then(() => {
         console.log('Base de données synchronisée');
-        app.listen(3000, () => console.log('Serveur lancé sur http://localhost:3000'));
+        app.listen(PORT, () => console.log('Serveur lancé sur http://localhost:3000'));
     })
     .catch(err => console.log('Erreur BDD:', err));

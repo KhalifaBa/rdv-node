@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import api from "../api/axios"; // Utilise l'instance configurée 'api', pas 'axios' direct
+import api from "../api/axios";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
@@ -12,27 +12,28 @@ export default function ClientAppointments() {
 
   const fetchAppointments = async () => {
     try {
-      const res = await api.get("/appointments"); // Route: GET /api/appointments
+      const res = await api.get("/appointments");
       setAppointments(res.data);
-    } catch (error) { toast.error("Impossible de charger les RDV"); }
-  };
-
-  // --- CORRECTION 1 : Annulation via POST ---
-  const handleCancel = async (id) => {
-    if (!window.confirm("Voulez-vous vraiment annuler ce RDV ? (Remboursement selon conditions)")) return;
-    try {
-      // On appelle la route 'cancel-client' définie dans le backend
-      const res = await api.post(`/appointments/cancel-client/${id}`);
-      
-      // On affiche le message du backend (ex: "RDV annulé et remboursé")
-      toast.success(res.data.message); 
-      fetchAppointments();
     } catch (error) { 
-        toast.error(error.response?.data?.message || "Erreur lors de l'annulation"); 
+      toast.error("Impossible de charger les RDV"); 
     }
   };
 
-  // Petit helper pour afficher le bon badge de statut
+  const handleCancel = async (id) => {
+    // Suppression de l'alerte de confirmation (window.confirm)
+    // L'annulation se lance directement au clic
+    try {
+      const res = await api.post(`/appointments/cancel-client/${id}`);
+      
+      // On affiche le message renvoyé par le backend (ex: "Remboursé")
+      toast.success(res.data.message); 
+      fetchAppointments();
+    } catch (error) { 
+      toast.error(error.response?.data?.message || "Erreur lors de l'annulation"); 
+    }
+  };
+
+  // Helper pour l'affichage des badges
   const getStatusBadge = (status, isPaid) => {
       if (status?.includes('cancelled_refunded')) return <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded font-bold uppercase">Annulé (Remboursé)</span>;
       if (status?.includes('cancelled')) return <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-bold uppercase">Annulé (Non remboursé)</span>;
@@ -56,7 +57,6 @@ export default function ClientAppointments() {
         ) : (
           <div className="grid gap-4">
             {appointments.map((rdv) => {
-                // --- CORRECTION 2 : Vérification du statut ---
                 const isCancelled = rdv.status && rdv.status.includes('cancelled');
 
                 return (
@@ -70,7 +70,6 @@ export default function ClientAppointments() {
                         <span>⏰ {new Date(rdv.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                       </div>
                       
-                      {/* Badge dynamique */}
                       <div className="mt-2">
                         {getStatusBadge(rdv.status, rdv.isPaid)}
                       </div>
@@ -79,7 +78,6 @@ export default function ClientAppointments() {
                     <div className="text-right flex items-center gap-6">
                       <div className="font-bold text-xl text-slate-700">{rdv.Service ? rdv.Service.price : 0} €</div>
                       
-                      {/* --- CORRECTION 3 : Cacher le bouton si annulé --- */}
                       {!isCancelled && (
                           <button 
                             onClick={() => handleCancel(rdv.id)} 

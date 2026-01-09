@@ -1,11 +1,13 @@
 const Appointment = require('../models/Appointment');
 const Service = require('../models/Service');
 const User = require('../models/User');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { differenceInHours } = require('date-fns');
 
 // 1. Réserver (Client)
 exports.bookAppointment = async (req, res) => {
   try {
-    const { serviceId, date, isPaid, stripePaymentId } = req.body; 
+    const { serviceId, date, isPaid, stripePaymentId } = req.body;
     const clientId = req.user.userId;
 
     const service = await Service.findByPk(serviceId);
@@ -19,13 +21,16 @@ exports.bookAppointment = async (req, res) => {
       date,
       clientId,
       serviceId,
-      isPaid: isPaid || false, // <--- Nouveau
-      stripePaymentId: stripePaymentId || null, // <--- Nouveau
-      price: service.price // <--- On fige le prix
+      isPaid: isPaid || false,
+      stripePaymentId: stripePaymentId || null, // On stocke l'ID Stripe ici
+      price: service.price,
+      status: 'confirmed' // On initialise un statut par défaut
     });
-    res.status(201).json({ message: 'Confirmé', appointment: newAppointment });
+
+    res.status(201).json({ message: 'RDV Confirmé', appointment: newAppointment });
   } catch (error) {
-    res.status(500).json({ message: 'Erreur réservation' });
+    console.error(error);
+    res.status(500).json({ message: 'Erreur lors de la réservation' });
   }
 };
 
@@ -34,63 +39,146 @@ exports.getMyAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.findAll({
       where: { clientId: req.user.userId },
-      include: [Service],
-      order: [['date', 'ASC']]
-    });
-    res.json(appointments);
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur récupération' });
-  }
-};
-
-// 3. Annuler MON RDV (Client)
-exports.cancelAppointment = async (req, res) => {
-  try {
-    const deleted = await Appointment.destroy({
-      where: { id: req.params.id, clientId: req.user.userId }
-    });
-    if (!deleted) return res.status(404).json({ message: 'Introuvable' });
-    res.json({ message: 'Annulé' });
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur annulation' });
-  }
-};
-
-// 4. Voir l'Agenda (Pro)
-exports.getProAppointments = async (req, res) => {
-  try {
-    const appointments = await Appointment.findAll({
       include: [
-        {
-            model: Service,
-            where: { userId: req.user.userId },
-            attributes: ['name', 'price', 'duration']
-        },
-        { model: User, attributes: ['email'] }
+        { 
+          model: Service, 
+          attributes: ['name', 'price', 'duration'] 
+        }
       ],
       order: [['date', 'ASC']]
     });
     res.json(appointments);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur agenda' });
+    res.status(500).json({ message: 'Erreur récupération des RDV' });
   }
 };
 
-// 5. Annuler un RDV Client (Pro) - (NOUVEAU)
-exports.cancelAppointmentPro = async (req, res) => {
+// 3. Voir l'Agenda (Pro)
+exports.getProAppointments = async (req, res) => {
   try {
-    const appointment = await Appointment.findByPk(req.params.id, { include: [Service] });
-    
-    if (!appointment) return res.status(404).json({ message: 'RDV introuvable' });
-    
-    // Vérifier que le service appartient bien au Pro connecté
-    if (appointment.Service.userId !== req.user.userId) {
-      return res.status(403).json({ message: 'Accès interdit' });
+    const appointments = await Appointment.findAll({
+      include: [
+        {
+          model: Service,
+          where: { userId: req.user.userId }, // Uniquement les services de ce Pro
+          attributes: ['name', 'price', 'duration']
+        },
+        { model: User, attributes: ['email', 'firstName', 'lastName'] } // Infos du client
+      ],
+      order: [['date', 'ASC']]
+    });
+    res.json(appointments);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur récupération agenda' });
+  }
+};
+
+// 4. Annuler un RDV (CLIENT) - Avec règle d'annulation et remboursement
+exports.cancelByClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user.userId;
+
+    // On cherche le RDV, et on inclut le Service -> puis le User (Pro) pour avoir ses règles
+    const appointment = await Appointment.findOne({
+      where: { id, clientId }, // Sécurité : seul le client du RDV peut annuler
+      include: [
+        {
+          model: Service,
+          include: [{ model: User, as: 'Pro' }] // Assure-toi que l'alias est correct dans tes models, sinon enlève "as: 'Pro'"
+        }
+      ]
+    });
+
+    if (!appointment) return res.status(404).json({ message: "RDV introuvable ou non autorisé" });
+
+    // Si déjà annulé
+    if (appointment.status && appointment.status.includes('cancelled')) {
+        return res.status(400).json({ message: "RDV déjà annulé" });
     }
 
-    await appointment.destroy();
-    res.json({ message: 'Rendez-vous annulé par le pro' });
+    const now = new Date();
+    const apptDate = new Date(appointment.date);
+
+    // Calcul des heures restantes
+    const hoursBeforeAppt = differenceInHours(apptDate, now);
+
+    // On récupère la règle du Pro via le service (ou 24h par défaut)
+    // Note: adapte "User" selon la structure de ton include ci-dessus
+    const proConfig = appointment.Service.User || {}; 
+    const limitHours = proConfig.cancellationDelay || 24; 
+
+    let refundStatus = 'no_refund';
+
+    // SI le client est dans les temps (ex: il reste 48h et la limite est 24h)
+    if (hoursBeforeAppt >= limitHours) {
+        if (appointment.stripePaymentId) {
+            try {
+                await stripe.refunds.create({
+                    payment_intent: appointment.stripePaymentId,
+                });
+                refundStatus = 'refunded';
+            } catch (err) {
+                console.error("Erreur Stripe Refund Client:", err);
+                // On continue l'annulation même si le remboursement échoue (cas rare), à gérer manuellement
+            }
+        }
+    }
+
+    // Mise à jour du statut
+    appointment.status = refundStatus === 'refunded' ? 'cancelled_refunded' : 'cancelled_no_refund';
+    await appointment.save();
+
+    res.json({
+        message: refundStatus === 'refunded' 
+            ? "RDV annulé et remboursé." 
+            : `RDV annulé hors délai (moins de ${limitHours}h). Pas de remboursement.`,
+        refunded: refundStatus === 'refunded'
+    });
+
   } catch (error) {
-    res.status(500).json({ message: 'Erreur annulation pro' });
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 5. Annuler un RDV (PRO) - Remboursement forcé
+exports.cancelByPro = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const proId = req.user.userId;
+
+    // 1. Trouver le RDV et vérifier qu'il appartient bien à un service de CE pro
+    const appointment = await Appointment.findByPk(id, {
+        include: [{ model: Service }]
+    });
+
+    if (!appointment) return res.status(404).json({ message: "RDV introuvable" });
+
+    // Sécurité : Vérifier que le service appartient au Pro connecté
+    if (appointment.Service.userId !== proId) {
+        return res.status(403).json({ message: "Vous n'avez pas le droit d'annuler ce RDV" });
+    }
+
+    // 2. Remboursement Stripe AUTOMATIQUE (Le pro annule = on rend l'argent)
+    if (appointment.stripePaymentId) {
+      try {
+        await stripe.refunds.create({
+          payment_intent: appointment.stripePaymentId,
+        });
+        console.log(`💰 Remboursement effectué pour le RDV ${id}`);
+      } catch (stripeError) {
+        console.error("Erreur Stripe Pro:", stripeError);
+      }
+    }
+
+    // 3. Mise à jour statut
+    appointment.status = 'cancelled_by_pro';
+    await appointment.save();
+
+    res.json({ message: "RDV annulé par le professionnel et client remboursé." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
   }
 };
