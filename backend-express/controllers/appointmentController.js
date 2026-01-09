@@ -73,19 +73,19 @@ exports.getProAppointments = async (req, res) => {
   }
 };
 
-// 4. Annuler un RDV (CLIENT) - Avec règle d'annulation et remboursement
+// 4. Annuler un RDV (CLIENT)
 exports.cancelByClient = async (req, res) => {
   try {
     const { id } = req.params;
     const clientId = req.user.userId;
 
-    // On cherche le RDV, et on inclut le Service -> puis le User (Pro) pour avoir ses règles
+    // CORRECTION ICI : On a retiré "as: 'Pro'" car votre modèle ne le connaît pas.
     const appointment = await Appointment.findOne({
-      where: { id, clientId }, // Sécurité : seul le client du RDV peut annuler
+      where: { id, clientId },
       include: [
         {
           model: Service,
-          include: [{ model: User, as: 'Pro' }] // Assure-toi que l'alias est correct dans tes models, sinon enlève "as: 'Pro'"
+          include: [{ model: User }] // <--- Juste "model: User", sans alias.
         }
       ]
     });
@@ -101,16 +101,18 @@ exports.cancelByClient = async (req, res) => {
     const apptDate = new Date(appointment.date);
 
     // Calcul des heures restantes
+    // Assurez-vous d'avoir importé differenceInHours en haut du fichier (ex: date-fns)
+    // const { differenceInHours } = require('date-fns');
     const hoursBeforeAppt = differenceInHours(apptDate, now);
 
-    // On récupère la règle du Pro via le service (ou 24h par défaut)
-    // Note: adapte "User" selon la structure de ton include ci-dessus
+    // On récupère la règle du Pro
+    // Comme on a retiré l'alias 'Pro' plus haut, .User fonctionne parfaitement ici
     const proConfig = appointment.Service.User || {}; 
     const limitHours = proConfig.cancellationDelay || 24; 
 
     let refundStatus = 'no_refund';
 
-    // SI le client est dans les temps (ex: il reste 48h et la limite est 24h)
+    // SI le client est dans les temps
     if (hoursBeforeAppt >= limitHours) {
         if (appointment.stripePaymentId) {
             try {
@@ -120,7 +122,6 @@ exports.cancelByClient = async (req, res) => {
                 refundStatus = 'refunded';
             } catch (err) {
                 console.error("Erreur Stripe Refund Client:", err);
-                // On continue l'annulation même si le remboursement échoue (cas rare), à gérer manuellement
             }
         }
     }
