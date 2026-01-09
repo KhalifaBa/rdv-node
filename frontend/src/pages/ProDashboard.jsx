@@ -5,14 +5,20 @@ import toast from "react-hot-toast";
 
 export default function ProDashboard() {
   const { user, logout } = useContext(AuthContext);
+  
+  // --- ÉTATS EXISTANTS ---
   const [services, setServices] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [formData, setFormData] = useState({ name: "", duration: 30, price: 0 });
-  
   const [schedule, setSchedule] = useState({ 
     openingHour: user?.openingHour || 9, 
     closingHour: user?.closingHour || 19 
   });
+
+  // --- NOUVEAUX ÉTATS (POUR LA MODALE) ---
+  const [showModal, setShowModal] = useState(false);
+  const [selectedRdvId, setSelectedRdvId] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => { 
     fetchServices();
@@ -59,7 +65,6 @@ export default function ProDashboard() {
   };
 
   const handleDeleteService = async (id) => {
-    // Suppression directe sans alerte
     try {
       await api.delete(`/services/${id}`);
       toast.success("Service supprimé 🗑️");
@@ -67,14 +72,28 @@ export default function ProDashboard() {
     } catch (error) { toast.error("Impossible de supprimer (utilisé dans un RDV ?)"); }
   };
 
-  const handleCancelRDV = async (id) => {
-    // Annulation directe sans alerte
+  // --- NOUVELLE LOGIQUE D'ANNULATION ---
+
+  // 1. Ouvre la modale
+  const handleOpenCancelModal = (id) => {
+    setSelectedRdvId(id);
+    setShowModal(true);
+  };
+
+  // 2. Confirme l'annulation (Appel API)
+  const handleConfirmCancel = async () => {
+    if (!selectedRdvId) return;
+    setIsCancelling(true);
+
     try {
-      const res = await api.post(`/appointments/cancel-pro/${id}`);
-      toast.success(res.data.message); // Ex: "RDV annulé et remboursé"
+      const res = await api.post(`/appointments/cancel-pro/${selectedRdvId}`);
+      toast.success(res.data.message || "RDV annulé avec succès"); 
       fetchProAppointments();
+      setShowModal(false);
     } catch (error) { 
       toast.error(error.response?.data?.message || "Erreur annulation"); 
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -217,9 +236,12 @@ export default function ProDashboard() {
                         {rdv.isPaid && !isCancelled && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">PAYÉ ✅</span>}
                         {rdv.isPaid && isCancelled && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">REMBOURSÉ ↩️</span>}
                         
-                        {/* Bouton Annuler (Uniquement si pas déjà annulé) */}
+                        {/* Bouton Annuler (MODIFIÉ POUR OUVRIR LA MODALE) */}
                         {!isCancelled ? (
-                          <button onClick={() => handleCancelRDV(rdv.id)} className="text-red-400 hover:text-red-600 text-xs font-medium border border-transparent hover:border-red-100 px-2 py-1 rounded transition">
+                          <button 
+                            onClick={() => handleOpenCancelModal(rdv.id)} 
+                            className="text-red-400 hover:text-red-600 text-xs font-medium border border-transparent hover:border-red-100 px-2 py-1 rounded transition"
+                          >
                             Annuler
                           </button>
                         ) : (
@@ -233,8 +255,47 @@ export default function ProDashboard() {
             </div>
           )}
         </div>
-
       </div>
+
+      {/* --- MODALE DE CONFIRMATION (CODE AJOUTÉ) --- */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Annuler ce rendez-vous ?</h3>
+            <p className="text-slate-600 mb-6">
+              Le client sera automatiquement notifié. <br/>
+              <span className="text-xs text-red-600 font-semibold">Cette action est irréversible.</span>
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowModal(false)}
+                disabled={isCancelling}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition font-medium"
+              >
+                Retour
+              </button>
+              
+              <button 
+                onClick={handleConfirmCancel}
+                disabled={isCancelling}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium flex items-center gap-2"
+              >
+                {isCancelling ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>...</span>
+                  </>
+                ) : "Confirmer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
