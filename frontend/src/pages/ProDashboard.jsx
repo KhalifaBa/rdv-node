@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import api from "../api/axios";
+import api from "../api/axios"; // Assure-toi que c'est bien ton fichier configuré avec l'intercepteur
 import { AuthContext } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -9,7 +9,6 @@ export default function ProDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [formData, setFormData] = useState({ name: "", duration: 30, price: 0 });
   
-  // State pour les horaires (valeurs par défaut venant du contexte ou 9h-19h)
   const [schedule, setSchedule] = useState({ 
     openingHour: user?.openingHour || 9, 
     closingHour: user?.closingHour || 19 
@@ -22,31 +21,31 @@ export default function ProDashboard() {
 
   const fetchServices = async () => {
     try {
-      const res = await api.get("/services/me");
+      const res = await api.get("/services/me"); // Vérifie que cette route existe bien dans ton backend
       setServices(res.data);
     } catch (error) { console.error(error); }
   };
 
   const fetchProAppointments = async () => {
     try {
-      const res = await api.get("/appointments/pro");
+      const res = await api.get("/appointments/pro"); // Route OK
       setAppointments(res.data);
     } catch (error) { console.log("Pas de RDV"); }
   };
 
-  // CALCUL DU CHIFFRE D'AFFAIRES (Total des RDV)
-  const totalRevenue = appointments.reduce((total, rdv) => total + (rdv.price || 0), 0);
+  // --- CORRECTION 1 : Calcul CA (Exclure les annulés) ---
+  const validAppointments = appointments.filter(rdv => !rdv.status?.includes('cancelled'));
+  const totalRevenue = validAppointments.reduce((total, rdv) => total + (rdv.price || 0), 0);
 
-  // Mise à jour des horaires
   const handleUpdateSchedule = async (e) => {
     e.preventDefault();
     if (schedule.openingHour >= schedule.closingHour) {
       return toast.error("L'ouverture doit être avant la fermeture !");
     }
     try {
-      await api.put("/auth/profile", schedule);
+      // Vérifie que tu as une route backend pour mettre à jour le profil user
+      await api.put("/auth/profile", schedule); 
       toast.success("Horaires mis à jour ! 🕒");
-      fetchServices(); // Rafraîchir pour être sûr
     } catch (error) { toast.error("Erreur sauvegarde"); }
   };
 
@@ -69,13 +68,17 @@ export default function ProDashboard() {
     } catch (error) { toast.error("Impossible de supprimer"); }
   };
 
+  // --- CORRECTION 2 : Route d'annulation correcte (POST et non DELETE) ---
   const handleCancelRDV = async (id) => {
-    if(!window.confirm("Annuler ce rendez-vous client ?")) return;
+    if(!window.confirm("Annuler ce RDV et rembourser le client ?")) return;
     try {
-      await api.delete(`/appointments/pro/${id}`);
-      toast.success("RDV annulé");
+      // On utilise la route POST /cancel-pro/:id définie dans le backend
+      const res = await api.post(`/appointments/cancel-pro/${id}`);
+      toast.success(res.data.message); // Affiche "RDV annulé et remboursé..."
       fetchProAppointments();
-    } catch (error) { toast.error("Erreur annulation"); }
+    } catch (error) { 
+      toast.error(error.response?.data?.message || "Erreur annulation"); 
+    }
   };
 
   return (
@@ -95,14 +98,14 @@ export default function ProDashboard() {
         {/* COLONNE GAUCHE : Gestion */}
         <div className="lg:col-span-1 space-y-8">
           
-          {/* CARTE CAGNOTTE (Nouveau) */}
+          {/* CARTE CAGNOTTE */}
           <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-2xl shadow-lg text-white">
-            <h3 className="text-sm font-medium opacity-80 uppercase tracking-wider">Chiffre d'Affaires Total</h3>
+            <h3 className="text-sm font-medium opacity-80 uppercase tracking-wider">Chiffre d'Affaires (Réel)</h3>
             <div className="flex items-baseline mt-2 gap-1">
               <span className="text-4xl font-bold">{totalRevenue}</span>
               <span className="text-xl">€</span>
             </div>
-            <p className="text-xs opacity-60 mt-2">{appointments.length} rendez-vous confirmés</p>
+            <p className="text-xs opacity-60 mt-2">{validAppointments.length} rendez-vous confirmés</p>
           </div>
 
           {/* Réglage Horaires */}
@@ -184,33 +187,51 @@ export default function ProDashboard() {
                   <tr>
                     <th className="p-4 text-xs font-bold text-slate-500 uppercase">Date & Heure</th>
                     <th className="p-4 text-xs font-bold text-slate-500 uppercase">Client</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Service / Gain</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Service</th>
                     <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">État</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {appointments.map((rdv) => (
-                    <tr key={rdv.id} className="hover:bg-slate-50 transition">
+                  {appointments.map((rdv) => {
+                    // --- CORRECTION 3 : Gestion visuelle du statut Annulé ---
+                    const isCancelled = rdv.status && rdv.status.includes('cancelled');
+                    
+                    return (
+                    <tr key={rdv.id} className={`hover:bg-slate-50 transition ${isCancelled ? 'bg-slate-50 opacity-60' : ''}`}>
                       <td className="p-4">
-                        <div className="font-bold text-slate-700">{new Date(rdv.date).toLocaleDateString()}</div>
+                        <div className={`font-bold ${isCancelled ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                          {new Date(rdv.date).toLocaleDateString()}
+                        </div>
                         <div className="text-sm text-slate-500">{new Date(rdv.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                       </td>
                       <td className="p-4">
-                         <div className="flex items-center gap-2">
-                             <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-xs">{rdv.User?.email[0].toUpperCase()}</div>
-                             <span className="text-sm text-slate-600">{rdv.User?.email}</span>
-                         </div>
+                          <div className="flex items-center gap-2">
+                             <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-xs">
+                               {rdv.User?.email ? rdv.User.email[0].toUpperCase() : '?'}
+                             </div>
+                             <span className="text-sm text-slate-600">{rdv.User?.email || 'Client supprimé'}</span>
+                          </div>
                       </td>
                       <td className="p-4">
                         <div className="text-sm font-medium text-slate-700">{rdv.Service?.name}</div>
                         <div className="text-xs text-green-600 font-bold">+ {rdv.price} €</div>
                       </td>
                       <td className="p-4 text-right flex flex-col items-end gap-2">
-                        {rdv.isPaid && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">PAYÉ ✅</span>}
-                        <button onClick={() => handleCancelRDV(rdv.id)} className="text-red-400 hover:text-red-600 text-xs font-medium border border-transparent hover:border-red-100 px-2 py-1 rounded transition">Annuler</button>
+                        {/* Statut PAIEMENT */}
+                        {rdv.isPaid && !isCancelled && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">PAYÉ ✅</span>}
+                        {rdv.isPaid && isCancelled && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">REMBOURSÉ ↩️</span>}
+                        
+                        {/* Bouton ANNULER (Seulement si pas déjà annulé) */}
+                        {!isCancelled ? (
+                          <button onClick={() => handleCancelRDV(rdv.id)} className="text-red-400 hover:text-red-600 text-xs font-medium border border-transparent hover:border-red-100 px-2 py-1 rounded transition">
+                            Annuler
+                          </button>
+                        ) : (
+                          <span className="text-xs text-red-500 font-bold border border-red-100 px-2 py-1 rounded bg-red-50">ANNULÉ ❌</span>
+                        )}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
