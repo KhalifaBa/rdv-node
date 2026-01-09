@@ -14,7 +14,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import PaymentForm from '../components/PaymentForm';
 
 // ⚠️ REMPLACE PAR TA CLÉ PUBLIQUE STRIPE (pk_test_...) ⚠️
-const stripePromise = loadStripe(process.env.VITE_STRIPE_PUBLIC_KEY); 
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY); 
 
 registerLocale('fr', fr);
 
